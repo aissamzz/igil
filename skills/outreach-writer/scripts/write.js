@@ -71,7 +71,7 @@ ${TEMPLATES}
 `.trim();
 
   const res = await openai.chat.completions.create({
-    model: 'gpt-4o',
+    model: 'gpt-5.3-codex',
     messages: [{ role: 'user', content: prompt }],
     max_tokens: 300,
     temperature: 0.7,

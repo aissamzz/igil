@@ -1,7 +1,7 @@
 {
   "agent": {
     "name": "igil",
-    "model": "openai/gpt-4o",
+    "model": "openai/gpt-5.3-codex",
     "workspace": "."
   },
   "agents": {
