@@ -1,0 +1,18 @@
+{
+  "agent": {
+    "name": "igil",
+    "model": "anthropic/claude-sonnet-4-6",
+    "workspace": "."
+  },
+  "agents": {
+    "defaults": {
+      "workspace": ".",
+      "background": false
+    }
+  },
+  "platforms": {
+    "telegram": {
+      "enabled": true
+    }
+  }
+}
