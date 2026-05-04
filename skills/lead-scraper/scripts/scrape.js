@@ -1,6 +1,6 @@
 /**
  * Igil lead scraper — wraps Barty-Bart google-maps-scraper
- * Falls back to Outscraper API on failure.
+ * Falls back to Apify apify/google-maps-scraper actor on failure.
  *
  * Usage:
  *   node scrape.js --niche "dentist" --city "Austin, TX" --run-id "uuid" --limit 100
@@ -63,13 +63,38 @@ async function scrapeWithBartyBart(niche, city, limit) {
   return JSON.parse(output);
 }
 
-async function scrapeWithOutscraper(niche, city, limit) {
-  const response = await fetch(
-    `https://api.app.outscraper.com/maps/search?query=${encodeURIComponent(`${niche} in ${city}`)}&limit=${limit}&async=false`,
-    { headers: { 'X-API-KEY': process.env.OUTSCRAPER_API_KEY } }
+async function scrapeWithApify(niche, city, limit) {
+  // Start Apify actor run and wait for results
+  const runRes = await fetch(
+    `https://api.apify.com/v2/acts/apify~google-maps-scraper/run-sync-get-dataset-items?token=${process.env.APIFY_API_TOKEN}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        searchStrings: [`${niche} in ${city}`],
+        maxCrawledPlaces: limit,
+        language: 'en',
+        countryCode: 'us',
+      }),
+      signal: AbortSignal.timeout(300_000), // Apify runs can take a few minutes
+    }
   );
-  const data = await response.json();
-  return data.data?.[0] || [];
+  if (!runRes.ok) throw new Error(`Apify error: ${await runRes.text()}`);
+  const items = await runRes.json();
+
+  // Normalize Apify output to match Barty-Bart field names
+  return items.map(r => ({
+    place_id:      r.placeId,
+    name:          r.title,
+    address:       r.address,
+    phone:         r.phone,
+    website:       r.website || null,
+    email:         r.email || null,
+    rating:        r.totalScore || null,
+    reviews_count: r.reviewsCount || 0,
+    instagram_url: r.socialMediaLinks?.find(l => l.includes('instagram')) || null,
+    facebook_url:  r.socialMediaLinks?.find(l => l.includes('facebook')) || null,
+  }));
 }
 
 async function checkWebsiteStatus(url) {
@@ -94,8 +119,8 @@ async function main() {
   try {
     rawResults = await scrapeWithBartyBart(niche, city, maxLeads);
   } catch (err) {
-    console.warn('Barty-Bart failed, falling back to Outscraper:', err.message);
-    rawResults = await scrapeWithOutscraper(niche, city, maxLeads);
+    console.warn('Barty-Bart failed, falling back to Apify:', err.message);
+    rawResults = await scrapeWithApify(niche, city, maxLeads);
   }
 
   const leads = [];

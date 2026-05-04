@@ -25,7 +25,6 @@ Do NOT use this skill to:
 Set env vars in `.env`:
 ```
 OPENAI_API_KEY=
-ANTHROPIC_API_KEY=
 SUPABASE_URL=
 SUPABASE_SERVICE_KEY=
 ```

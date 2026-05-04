@@ -1,6 +1,6 @@
 ---
 name: outreach-writer
-description: Generate personalized outreach messages for every channel a lead has (WhatsApp, email, Instagram DM, Facebook). Uses Claude to write short, direct, agency-quality messages.
+description: Generate personalized outreach messages for every channel a lead has (WhatsApp, email, Instagram DM, Facebook). Uses GPT-4o to write short, direct, agency-quality messages.
 metadata.openclaw:
   emoji: ✉️
   required-binaries:
@@ -23,7 +23,7 @@ Do NOT use this skill to:
 
 Set env vars in `.env`:
 ```
-ANTHROPIC_API_KEY=
+OPENAI_API_KEY=
 SUPABASE_URL=
 SUPABASE_SERVICE_KEY=
 ```
@@ -58,7 +58,7 @@ Generate only for detected channels. Store each message in the `outreach` table.
 - Sign-off: `— Aissam, Murus Mare`
 - No pressure language, no generic openers, no AI filler
 
-## Claude Prompt Pattern
+## GPT-4o Prompt Pattern
 
 ```
 Write a {channel} outreach message for {business_name}, a {niche} in {city}.

@@ -48,7 +48,7 @@ Run #7:
 ## Step 2 — Lead Scraping
 
 **Tool:** Barty-Bart google-maps-scraper
-**Fallback:** Outscraper API (if scraper fails or is rate-limited)
+**Fallback:** Apify `apify/google-maps-scraper` actor (if scraper fails or is rate-limited)
 
 **Per niche:**
 - Query Google Maps with niche keyword + city
@@ -253,7 +253,7 @@ Ready for outreach: {n} leads
 
 | Failure | Behavior |
 |---|---|
-| Scraper rate-limited | Switch to Outscraper fallback |
+| Scraper rate-limited | Switch to Apify fallback |
 | Lead data incomplete | Skip lead, log reason |
 | Demo generation error | Log, skip to next lead |
 | Coolify deployment error | Retry once, then mark failed |

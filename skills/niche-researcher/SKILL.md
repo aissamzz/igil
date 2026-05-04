@@ -25,7 +25,7 @@ Do NOT use this skill to:
 Set env vars in `.env`:
 ```
 BRAVE_API_KEY=
-ANTHROPIC_API_KEY=
+OPENAI_API_KEY=
 SUPABASE_URL=
 SUPABASE_SERVICE_KEY=
 ```
@@ -47,7 +47,7 @@ node -e "require('./skills/niche-researcher/scripts/research.js').run({niche: 'd
 3. If not cached:
    a. Brave Search: `"best {niche} website {city}"` → top 3 URLs
    b. Fetch each URL (skip if 4xx/5xx)
-   c. Pass HTML to Claude: extract layout, services, tone, colors, CTAs
+   c. Pass HTML to GPT-4o: extract layout, services, tone, colors, CTAs
    d. Write result to `niche_insights` table
 4. Return structured insights object
 

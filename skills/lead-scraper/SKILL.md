@@ -29,7 +29,7 @@ cd google-maps-scraper && npm install
 
 Set env vars in `.env`:
 ```
-OUTSCRAPER_API_KEY=   # only needed for fallback
+APIFY_API_TOKEN=      # only needed for fallback
 SUPABASE_URL=
 SUPABASE_SERVICE_KEY=
 ```
@@ -60,7 +60,7 @@ Writes records to Supabase `leads` table. Returns JSON summary:
 
 If Barty-Bart scraper fails or is rate-limited:
 1. Log the error with run_id
-2. Switch to Outscraper API (same output format)
+2. Switch to Apify `apify/google-maps-scraper` actor (same output format)
 3. Continue pipeline — do not halt on scraper failure
 
 ## Fields Extracted

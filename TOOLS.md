@@ -8,11 +8,11 @@
 
 **Skill:** `lead-scraper`
 **Source:** https://github.com/Barty-Bart/google-maps-scraper
-**Fallback:** Outscraper API
+**Fallback:** Apify `apify/google-maps-scraper` actor
 
 **Env vars:**
 ```
-OUTSCRAPER_API_KEY=   # fallback only
+APIFY_API_TOKEN=      # fallback only
 ```
 
 **Usage:**
@@ -182,7 +182,7 @@ TELEGRAM_CHAT_ID=     # Aissam's personal chat ID
 
 | Tool | Failure | Fallback |
 |---|---|---|
-| Barty-Bart scraper | Rate-limited / error | Outscraper API |
+| Barty-Bart scraper | Rate-limited / error | Apify actor |
 | Coolify deploy | 5xx / timeout | Retry once after 30s |
 | Telegram notify | Send failure | Retry 3x with backoff |
 | Brave API | 429 / error | Log, skip research, use cached niche_insights |
