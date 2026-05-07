@@ -1,138 +1,137 @@
-# Igil — OpenClaw Agent for Murus Mare
+# Igil — Autonomous Agent of Murus Mare
 
-Igil is an autonomous lead-to-demo pipeline. It scrapes US businesses from Google Maps, qualifies them by score, generates Next.js demo websites via ChatGPT Codex, deploys them to Coolify, and sends personalized outreach via Telegram — ready for the operator to copy and send.
+> *"The eagle does not rush. It circles high, sees everything, and when it moves,
+> it moves with complete commitment."*
 
----
-
-## What Igil Does Per Run
-
-1. Selects 3 niches and 3 US cities
-2. Scrapes up to 100 businesses per niche (Google Maps)
-3. Scores and qualifies leads (threshold: 60+)
-4. Researches top 3 competitor sites per niche (Brave API)
-5. Generates a Next.js + Tailwind demo per qualified lead (Codex)
-6. Deploys each demo to `{slug}.murusmare.com` via Coolify
-7. Writes personalized outreach per channel (WhatsApp, email, Instagram, Facebook)
-8. Notifies operator via Telegram after each demo
-
-**Limits:** 100 leads/niche · 30 demos/run · daily cadence
+Igil is the autonomous AI agent that powers Murus Mare's lead generation, website
+building, and outreach pipeline. He runs on OpenClaw, deployed on a Hostinger KVM4 VPS,
+and works while Aissam sleeps.
 
 ---
 
-## Setup
+## What Igil Does
 
-### 1. Prerequisites
-
-- Node 22.14+ or Node 24
-- OpenClaw installed: `npm install -g openclaw@latest`
-- Supabase project created (schema: `supabase/schema.sql`)
-- Coolify self-hosted with wildcard `*.murusmare.com` DNS pointing to it
-- Telegram bot created via BotFather
-- GitHub personal access token (repo scope)
-
-### 2. Environment Variables
-
-Copy `.env.example` to `.env` and fill in all values:
-
-```bash
-cp .env.example .env
 ```
+Every night, automatically:
 
-### 3. Apply Supabase Schema
+02:00  SCRAPE   → Google Maps → 100 businesses with no website
+03:00  QUALIFY  → Brave Search verification + lead scoring (0–100)
+04:00  RESEARCH → Competitor analysis + business profile + tech opportunities
+05:00  BUILD    → Codex builds a unique Next.js + shadcn website per business
+06:00  DEPLOY   → GitHub push → Coolify → businessname.murusmare.com
+07:00  NOTIFY   → Telegram: live URL + outreach messages → Aissam
+08:00  DIGEST   → Daily summary of pipeline stats
 
-In the Supabase dashboard → SQL Editor, run:
-
-```sql
--- paste contents of supabase/schema.sql
-```
-
-### 4. Place This Workspace
-
-This folder should be set as your OpenClaw workspace:
-
-```bash
-openclaw config set workspace /path/to/igil
+Aissam reviews notifications, picks the best leads, sends the outreach.
 ```
 
 ---
 
-## Triggering a Run
+## Documentation Index
 
-Send via Telegram to Igil:
-
-```
-/run
-```
-
-Override niche or city:
-```
-/run niche=dentist city="Austin, TX"
-```
-
-Check status of current run:
-```
-/status
-```
-
----
-
-## Skills
-
-| Skill | Purpose |
+### Agent Identity
+| File | Contents |
 |---|---|
-| `lead-scraper` | Scrape Google Maps via Barty-Bart scraper |
-| `lead-qualifier` | Score leads and write qualified ones to Supabase |
-| `niche-researcher` | Research competitor sites via Brave API |
-| `demo-builder` | Generate Next.js + Tailwind demos via Codex |
-| `deploy-manager` | Push to GitHub and deploy via Coolify API |
-| `outreach-writer` | Generate personalized multi-channel messages |
-| `notify` | Send Telegram notifications to operator |
+| `agent/AGENTS.md` | Igil's operating rules, mission, tools, constraints |
+| `agent/SOUL.md` | Character, values, what Igil is and is not |
+| `agent/USER.md` | Facts about Aissam: background, preferences, goals |
+| `agent/TOOLS.md` | Complete tool reference with code patterns |
+| `agent/THEMES.md` | Visual identity system — themes, fonts, hero variants |
+| `agent/openclaw-config.json` | OpenClaw agent configuration |
 
----
-
-## Key Files
-
-| File | Purpose |
+### Operational Notes (live files, updated by Igil)
+| File | Contents |
 |---|---|
-| `SOUL.md` | Identity, mission, core principles |
-| `AGENTS.md` | Full pipeline specification (9 steps) |
-| `TOOLS.md` | Tool configuration and usage rules |
-| `MEMORY.md` | Supabase storage schema and anti-duplication rules |
-| `USER.md` | Operator profile and preferences |
-| `IDENTITY.md` | Agent identity card |
-| `STYLE.md` | Output, code, and design conventions |
-| `supabase/schema.sql` | Full PostgreSQL schema |
-| `openclaw.json` | OpenClaw agent configuration |
-| `.env.example` | All required environment variables |
+| `agent/notes/queue.md` | Current niche/city targeting position |
+| `agent/notes/daily-log.md` | Operational log, one entry per cron run |
+
+### Scheduling
+| File | Contents |
+|---|---|
+| `cron/CRON.md` | All 9 cron jobs: CLI commands + JSON config |
+
+### Skills (Igil's capabilities)
+| File | Contents |
+|---|---|
+| `skills/igil-scrape/SKILL.md` | Google Maps scraping logic |
+| `skills/igil-qualify/SKILL.md` | Lead qualification + scoring |
+| `skills/igil-research/SKILL.md` | Competitor + business research |
+| `skills/igil-build/SKILL.md` | Codex prompt generation + website building |
+| `skills/igil-deploy/SKILL.md` | GitHub push + Coolify deployment |
+| `skills/igil-notify/SKILL.md` | Outreach generation + Telegram notifications |
+
+### Database
+| File | Contents |
+|---|---|
+| `supabase/schema.sql` | Complete PostgreSQL schema with RLS |
+
+### Legal
+| File | Contents |
+|---|---|
+| `legal/LEGAL.md` | Terms of Service + Privacy Policy drafts |
+
+### Setup
+| File | Contents |
+|---|---|
+| `SETUP.md` | Complete VPS installation guide, step by step |
 
 ---
 
-## Architecture
+## The Stack
 
-```
-Telegram /run command
-        │
-        ▼
-  Niche Selection
-        │
-        ▼
-  Lead Scraping ──────────── Barty-Bart google-maps-scraper
-        │
-        ▼
-  Lead Qualification ──────── Supabase (leads table)
-        │
-        ▼
-  Niche Research ─────────── Brave API + Claude
-        │
-        ▼
-  Demo Generation ────────── coding-agent skill (Codex)
-        │
-        ▼
-  Deployment ─────────────── GitHub + Coolify
-        │
-        ▼
-  Outreach Writing ────────── Claude (per channel)
-        │
-        ▼
-  Telegram Notification ───── Operator (Aissam)
-```
+| Layer | Technology |
+|---|---|
+| Agent runtime | OpenClaw (Node.js, self-hosted) |
+| Lead scraping | gosom/google-maps-scraper (Go + Playwright) |
+| Web research | Brave Search API |
+| Database | Supabase (PostgreSQL + RLS) |
+| Website building | Codex CLI + Next.js 15 + shadcn/ui |
+| Code hosting | GitHub (murusmare-clients org, private repos) |
+| Deployment | Coolify v4 API (self-hosted on KVM4) |
+| SSL | Traefik + Let's Encrypt DNS challenge (Cloudflare) |
+| Domain | *.murusmare.com wildcard |
+| Notifications | Telegram Bot API |
+| Billing | Creem.io (Merchant of Record) |
+| Infrastructure | Hostinger KVM4 (Ubuntu 24.04) |
+
+---
+
+## Pipeline Status Reference
+
+| Status | Meaning |
+|---|---|
+| `scraped` | Found on Google Maps, no website detected |
+| `qualified` | Verified by Brave Search, scored, not a franchise |
+| `researched` | Competitor analysis done, business profile complete |
+| `site_built` | Website built by Codex, pnpm build passed |
+| `deployed` | Live at slug.murusmare.com, HTTP 200 confirmed |
+| `notified` | Telegram sent to Aissam, outreach messages stored |
+| `outreach_sent` | Aissam sent the outreach message |
+| `responded` | Prospect replied |
+| `won` | Client signed up ($249/month) |
+| `lost` | Prospect declined |
+| `rejected` | Failed qualification (franchise, has website, etc.) |
+| `failed` | Technical error — see rejection_reason or build_log |
+
+---
+
+## Key Numbers to Hit
+
+| Metric | Target |
+|---|---|
+| Leads scraped/week | ~700 |
+| Leads qualified/week | ~200 |
+| Sites built/week | ~30 |
+| Sites deployed/week | ~25 |
+| Outreach sent/week | ~20 (Aissam reviews, selects best) |
+| Conversion rate | ~5% |
+| Clients by year end | 50 |
+
+---
+
+## About
+
+Murus Mare — from the ancient Phoenician walls of the Algerian coast.
+Built offshore. Delivered internationally.
+
+Founded by Aissam Chibah, Jijel, Algeria. Powered by Igil.
