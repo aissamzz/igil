@@ -1,0 +1,230 @@
+# Igil Cron Jobs Configuration
+# File: ~/.openclaw/cron/jobs.json (shown here as YAML for readability)
+#
+# Register these with OpenClaw CLI:
+#   openclaw cron add --config ~/igil-docs/cron/jobs.yaml
+#
+# Or individually (see commands below each job)
+
+jobs:
+
+  # =========================================================
+  # JOB 1: Nightly Scrape
+  # Runs at 02:00 UTC every night
+  # Picks next pending item from scrape queue, collects 100 leads
+  # =========================================================
+  - name: "igil-scrape"
+    cron: "0 2 * * *"
+    tz: "UTC"
+    agent: "igil"
+    session: "isolated"
+    announce: true
+    channel: "telegram"
+    message: |
+      Run the Google Maps scraper for the next pending item in the scrape queue.
+      
+      Steps:
+      1. Read ~/igil/queue/scrape-queue.jsonl and find the first item with status="pending"
+      2. Mark it status="running"
+      3. Run google-maps-scraper with that niche and city (use exec tool)
+      4. Filter results for no-website businesses (no website field, or social-only website)
+      5. Filter out chains and franchises
+      6. Write all results to Supabase businesses table with status='scraped'
+      7. Mark the queue item status="done"
+      8. Log a summary: how many scraped, how many passed initial filter
+      
+      Use the igil-scrape skill. Do not notify Aissam — this is a silent background job.
+      If the queue is empty, log that fact and exit cleanly.
+
+  # CLI command to add:
+  # openclaw cron add \
+  #   --name "igil-scrape" \
+  #   --cron "0 2 * * *" \
+  #   --tz "UTC" \
+  #   --session isolated \
+  #   --agent igil \
+  #   --message "Run the Google Maps scraper... (full message above)"
+
+  # =========================================================
+  # JOB 2: Qualify Leads
+  # Runs at 03:00 UTC every night (1 hour after scrape)
+  # Takes scraped leads and qualifies/scores them
+  # =========================================================
+  - name: "igil-qualify"
+    cron: "0 3 * * *"
+    tz: "UTC"
+    agent: "igil"
+    session: "isolated"
+    announce: false
+    message: |
+      Qualify the batch of businesses with status='scraped' in Supabase.
+      
+      Steps:
+      1. Fetch up to 150 businesses with status='scraped' from Supabase
+      2. For each business, run a Brave Search verification to confirm no website exists
+         (query: "[business name] [city] [state]", check top 5 results for official site)
+      3. Compute a lead score 0-100 using the scoring model in igil-qualify skill
+      4. If score >= 40 AND no website confirmed: update status='qualified'
+      5. If score < 40 OR website found: update status='rejected'
+      6. Add [PRIORITY] prefix to notes for leads with score >= 70
+      7. Log a summary count
+      
+      Rate limit: 1 Brave Search call per second maximum. Use asyncio.sleep(1).
+      Use the igil-qualify skill. Do not notify Aissam.
+
+  # =========================================================
+  # JOB 3: Research Leads
+  # Runs at 04:00 UTC every night (1 hour after qualify)
+  # Deep research on qualified leads
+  # =========================================================
+  - name: "igil-research"
+    cron: "0 4 * * *"
+    tz: "UTC"
+    agent: "igil"
+    session: "isolated"
+    announce: false
+    message: |
+      Research qualified leads. Process businesses with status='qualified' and lead_score >= 60.
+      
+      Phase 1 — Niche research (once per niche+city, cached 7 days):
+      1. For each unique niche+city combo in today's qualified batch:
+         - Check if niche_research table has a row for this niche+city < 7 days old
+         - If yes: skip
+         - If no: search Brave for "best [niche] in [city] [state]", get top 3 non-directory sites
+         - Fetch each site and extract: headlines, services, design tone, CTAs, pricing
+         - Store in niche_research table
+      
+      Phase 2 — Business research (for each qualified lead with score >= 60):
+      1. Brave Search: "[business name] [city]" — find Facebook, Instagram, owner name, mentions
+      2. Brave Search: "[business name] [city] email contact" — try to find contact email
+      3. Update businesses table: email, social_media (JSON), notes
+      4. Generate upsell hints based on niche and business profile
+      5. Update status='researched'
+      
+      Spawn sub-agents for parallel processing: max 5 concurrent, each handles 3-4 businesses.
+      Rate limit: 1 Brave Search call per second. Total: ~3 calls per business.
+      Use the igil-research skill.
+
+  # =========================================================
+  # JOB 4: Build & Deploy
+  # Runs at 06:00 UTC every morning
+  # Takes top 5 researched leads and builds + deploys their sites
+  # =========================================================
+  - name: "igil-build"
+    cron: "0 6 * * *"
+    tz: "UTC"
+    agent: "igil"
+    session: "isolated"
+    announce: false
+    message: |
+      Build and deploy websites for the top 5 researched leads.
+      
+      Selection: SELECT * FROM businesses WHERE status='researched' AND lead_score >= 60
+                 ORDER BY lead_score DESC LIMIT 5
+      
+      For each selected business:
+      
+      Step A — Generate site prompt:
+      1. Fetch the niche_research data for this business's niche+city
+      2. Generate a detailed, specific Codex prompt using the igil-build skill template
+      3. The prompt must specify: visual theme, typography, section order, copy direction,
+         photo strategy, SEO metadata, all business info
+      4. Save the prompt to businesses.prompt_used
+      
+      Step B — Build the site:
+      1. Copy ~/igil/template-business-v1 to ~/igil/builds/{city-slug}-{name-slug}
+      2. Run: codex --model claude-sonnet-4-5 --approval-mode full-auto "$(prompt)"
+      3. Run: npm install && npm run build
+      4. If build fails: mark build_status='failed', log error, SKIP to next lead
+      
+      Step C — Push to GitHub:
+      1. Run: gh repo create murusmare-clients/{slug} --private --source=. --push
+      2. If push fails: retry once after 10s, then skip + log
+      3. Save github_repo_url to businesses table
+      
+      Step D — Deploy to Coolify:
+      1. Create Coolify application via POST /api/v1/applications/public
+      2. Set env vars via POST /api/v1/applications/{uuid}/envs/bulk
+      3. Trigger deploy via GET /api/v1/deploy?uuid={uuid}
+      4. Poll every 10s until status=running (timeout: 5 minutes)
+      5. Save coolify_app_uuid and deployed_url
+      6. Update status='deployed'
+      
+      Use igil-build and igil-deploy skills. Do not notify Aissam — igil-notify handles that.
+
+  # =========================================================
+  # JOB 5: Notify Aissam
+  # Runs at 08:00 UTC every morning (when Aissam starts his day — 09:00 Algeria time)
+  # =========================================================
+  - name: "igil-notify"
+    cron: "0 8 * * *"
+    tz: "UTC"
+    agent: "igil"
+    session: "isolated"
+    announce: true
+    channel: "telegram"
+    message: |
+      Generate outreach messages and notify Aissam of all newly deployed sites.
+      
+      Selection: SELECT * FROM businesses WHERE status='deployed' ORDER BY lead_score DESC
+      
+      For each deployed business:
+      
+      Step 1 — Generate email outreach:
+      - Use the outreach email template from igil-notify skill
+      - Personalise with: owner first name (from notes), rating, review count, city, niche
+      - Include the live deployed_url prominently in first 2 sentences
+      - Max 150 words in body
+      - Save to businesses.outreach_email and outreach_messages table
+      
+      Step 2 — Generate SMS/WhatsApp (if phone number found):
+      - Use the SMS template from igil-notify skill
+      - Max 60 words
+      - Save to businesses.outreach_sms and outreach_messages table
+      
+      Step 3 — Send Telegram notification to Aissam:
+      - Use HTML parse mode
+      - Include: business name, city, niche, rating, reviews, score, live URL, GitHub URL
+      - Include: all contact info found (phone, email, social links)
+      - Include: all outreach messages (ready to copy-paste)
+      - Include: upsell hints from notes
+      - Space messages 3 seconds apart to avoid rate limits
+      
+      Step 4 — Update status='notified'
+      
+      Use igil-notify skill.
+
+  # =========================================================
+  # JOB 6: Monday Status Digest
+  # Runs at 09:00 UTC every Monday
+  # =========================================================
+  - name: "igil-status"
+    cron: "0 9 * * 1"
+    tz: "UTC"
+    agent: "igil"
+    session: "main"
+    announce: true
+    channel: "telegram"
+    message: |
+      Send a Monday morning pipeline digest to Aissam via Telegram.
+      
+      Query Supabase for the following stats (this week = last 7 days):
+      - Count of businesses scraped this week
+      - Count qualified this week
+      - Count researched this week
+      - Count sites built this week
+      - Count deployed this week
+      - Count notified this week
+      - Count outreach_sent (where a reply was recorded)
+      - Count won (all time)
+      - Count total businesses in DB
+      - Count ready to deploy (status='researched', score>=60)
+      - Count build failures this week
+      - Estimated MRR (won_count * 249)
+      - Progress to 50-client goal
+      
+      Also check Coolify via GET /api/v1/servers/{uuid}/domains for any sites
+      showing error/degraded status — include in the digest if any.
+      
+      Format using the weekly digest template in igil-notify skill.
+      This job runs in main session so Aissam can reply and ask questions.

@@ -1,0 +1,116 @@
+{
+  "$schema": "https://openclaw.ai/schemas/config.json",
+  "version": "1.0",
+
+  "agents": {
+    "igil": {
+      "description": "Murus Mare autonomous lead-gen and site-building agent",
+      "agentDir": "~/.openclaw/agents/igil",
+      "model": "claude-sonnet-4-5",
+      "maxTokens": 8096,
+      "defaults": {
+        "tools": {
+          "exec": {
+            "enabled": true,
+            "allowedCommands": [
+              "google-maps-scraper",
+              "codex",
+              "python3",
+              "node",
+              "npm",
+              "git",
+              "gh",
+              "curl",
+              "jq",
+              "tar",
+              "cp",
+              "mkdir",
+              "rm",
+              "ls",
+              "cat",
+              "echo",
+              "grep",
+              "find",
+              "chmod"
+            ],
+            "workingDirectory": "/home/igil"
+          },
+          "web_search": {
+            "enabled": true,
+            "provider": "brave",
+            "maxResults": 10
+          },
+          "web_fetch": {
+            "enabled": true,
+            "maxContentLength": 50000,
+            "timeout": 20
+          },
+          "read": {
+            "enabled": true,
+            "allowedPaths": [
+              "/home/igil/**",
+              "/tmp/igil/**"
+            ]
+          },
+          "write": {
+            "enabled": true,
+            "allowedPaths": [
+              "/home/igil/**",
+              "/tmp/igil/**"
+            ]
+          },
+          "message": {
+            "enabled": true
+          },
+          "browser": {
+            "enabled": false
+          }
+        },
+        "subagents": {
+          "enabled": true,
+          "model": "claude-haiku-4-5",
+          "maxSpawnDepth": 1,
+          "maxChildrenPerAgent": 5,
+          "maxConcurrent": 5,
+          "runTimeoutSeconds": 900
+        },
+        "memory": {
+          "enabled": true,
+          "searchOnStart": true
+        }
+      }
+    }
+  },
+
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "agentId": "igil",
+      "token": "${TG_BOT_TOKEN}",
+      "allowedChatIds": ["${TG_CHAT_ID}"]
+    }
+  },
+
+  "tools": {
+    "brave-search": {
+      "apiKey": "${BRAVE_API_KEY}",
+      "baseUrl": "https://api.search.brave.com"
+    }
+  },
+
+  "environment": {
+    "BRAVE_API_KEY": "${BRAVE_API_KEY}",
+    "SUPABASE_URL": "${SUPABASE_URL}",
+    "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}",
+    "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+    "GH_TOKEN": "${GITHUB_TOKEN}",
+    "COOLIFY_API_URL": "${COOLIFY_API_URL}",
+    "COOLIFY_API_KEY": "${COOLIFY_API_KEY}",
+    "COOLIFY_SERVER_UUID": "${COOLIFY_SERVER_UUID}",
+    "COOLIFY_PROJECT_UUID": "${COOLIFY_PROJECT_UUID}",
+    "FORMSPREE_API_KEY": "${FORMSPREE_API_KEY}",
+    "TG_BOT_TOKEN": "${TG_BOT_TOKEN}",
+    "TG_CHAT_ID": "${TG_CHAT_ID}",
+    "UNSPLASH_ACCESS_KEY": "${UNSPLASH_ACCESS_KEY}"
+  }
+}
